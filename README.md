@@ -40,7 +40,10 @@ This repository contains an ongoing research project focused on evaluating the r
 - Comparison between original and adversarial captions
 - Metric-based robustness analysis
 
+
 ---
+
+```
 
 ## 🧪 Repository Structure
 
@@ -62,7 +65,7 @@ This repository contains an ongoing research project focused on evaluating the r
 │
 ├── README.md
 └── requirements.txt
-
+```
 ---
 
 ## 🚧 Planned Extensions (Future Work)
