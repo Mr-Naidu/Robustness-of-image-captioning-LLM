@@ -1,0 +1,47 @@
+# Experiment Log – Transfer Attacks (Preliminary Results)
+
+## Experiment Setup
+- Task: Image Captioning Robustness Evaluation
+- Attack Setting: Transfer-based attacks
+- Attacks: FGSM, MI-FGSM
+- Metric: BLEU
+- Models Evaluated:
+  - Original (Base) Model
+  - LoRA Fine-tuned Model
+
+---
+
+## Results (BLEU Scores)
+
+### Original Model
+
+| Condition | BLEU |
+|---------|------|
+| Clean | 0.0303 |
+| FGSM | 0.0243 |
+| MI-FGSM | 0.0167 |
+
+---
+
+### LoRA Fine-tuned Model
+
+| Condition | BLEU |
+|---------|------|
+| Clean | 0.0234 |
+| FGSM | 0.0211 |
+| MI-FGSM | 0.0166 |
+
+---
+
+## Observations (Preliminary)
+
+- Both models show degradation in caption quality under transfer attacks.
+- MI-FGSM causes larger BLEU drop compared to FGSM.
+- LoRA fine-tuning does not fully mitigate transfer-based adversarial effects.
+- Further evaluation using METEOR and BERTScore is ongoing.
+
+---
+
+## Notes
+- Results are preliminary and based on limited evaluation.
+- Large-scale experiments and additional attacks will be included in future updates.
