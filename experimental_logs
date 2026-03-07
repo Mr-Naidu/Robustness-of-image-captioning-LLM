@@ -1,119 +1,136 @@
-# Experiment Log – Transfer Attacks (Extended Evaluation Results)
+# Experimental Logs
 
-## Experiment Setup
-- Task: Image Captioning Robustness Evaluation
-- Attack Setting: Transfer-based adversarial attacks
-- Attacks: FGSM, MI-FGSM
-- Metrics:
-  - BLEU-1, BLEU-2, BLEU-3, BLEU-4
-  - METEOR
-  - BERTScore-F1
-- Models Evaluated:
-  - Original (Base) Model
-  - LoRA Fine-tuned Model
+This document summarizes experiments conducted to evaluate the robustness of the **GIT-Large image captioning model** against adversarial transfer attacks.
+The defense method explored is **LoRA-based adversarial fine-tuning** using a mixture of clean and adversarially perturbed images.
+
+Dataset: Flickr8k
+Evaluation set size: 1000 images
 
 ---
 
-# Results
+# 1. Baseline Model (Pretrained GIT-Large)
 
-## 1️⃣ Original (Base) Model
+### Model
 
-### Clean Performance
+* Architecture: microsoft/git-large
+* Training: No additional fine-tuning
+* Dataset: Flickr8k
 
-| Metric | Score |
-|--------|-------|
-| BLEU-1 | 0.1234 |
-| BLEU-2 | 0.0721 |
-| BLEU-3 | 0.0484 |
-| BLEU-4 | 0.0359 |
-| METEOR | 0.1511 |
+### Attack Configuration
+
+* FGSM attack (ε = 8/255)
+* MI-FGSM attack (ε = 8/255, α = 2/255, 10 iterations)
+
+---
+
+## Clean Performance
+
+| Metric       | Score  |
+| ------------ | ------ |
+| BLEU-1       | 0.1234 |
+| BLEU-2       | 0.0721 |
+| BLEU-3       | 0.0484 |
+| BLEU-4       | 0.0359 |
+| METEOR       | 0.1511 |
 | BERTScore-F1 | 0.8988 |
 
 ---
 
-### Under FGSM Attack
+## Performance Under FGSM Attack
 
-| Metric | Score |
-|--------|-------|
-| BLEU-4 | 0.0282 |
-| METEOR | 0.1266 |
+| Metric       | Score  |
+| ------------ | ------ |
+| BLEU-4       | 0.0282 |
+| METEOR       | 0.1266 |
 | BERTScore-F1 | 0.8937 |
 
-**Drop % (from Clean):**
-- BLEU-4 ↓ 21.45%
-- BERTScore-F1 ↓ 0.57%
+**Performance Degradation**
+
+* BLEU-4 decrease: 21.45%
+* BERTScore-F1 decrease: 0.57%
 
 ---
 
-### Under MI-FGSM Attack
+## Performance Under MI-FGSM Attack
 
-| Metric | Score |
-|--------|-------|
-| BLEU-4 | 0.0189 |
-| METEOR | 0.0845 |
+| Metric       | Score  |
+| ------------ | ------ |
+| BLEU-4       | 0.0189 |
+| METEOR       | 0.0845 |
 | BERTScore-F1 | 0.8842 |
 
-**Drop % (from Clean):**
-- BLEU-4 ↓ 47.32%
-- BERTScore-F1 ↓ 1.62%
+**Performance Degradation**
+
+* BLEU-4 decrease: 47.32%
+* BERTScore-F1 decrease: 1.62%
 
 ---
 
-## 2️⃣ LoRA Fine-tuned Model
+# 2. LoRA Adversarially Fine-Tuned Model
 
-### Clean Performance
+### Training Configuration
 
-| Metric | Score |
-|--------|-------|
-| BLEU-1 | 0.2147 |
-| BLEU-2 | 0.0678 |
-| BLEU-3 | 0.0374 |
-| BLEU-4 | 0.0282 |
-| METEOR | 0.1648 |
-| BERTScore-F1 | 0.8632 |
+| Parameter              | Value               |
+| ---------------------- | ------------------- |
+| Base Model             | microsoft/git-large |
+| Fine-tuning Method     | LoRA                |
+| LoRA Rank              | 4                   |
+| LoRA Alpha             | 8                   |
+| Learning Rate          | 2e-5                |
+| Batch Size             | 4                   |
+| Epochs                 | 5                   |
+| Maximum Caption Length | 50                  |
 
----
+### Training Data Composition
 
-### Under FGSM Attack
+The training dataset contains a mixture of clean and adversarially perturbed images.
 
-| Metric | Score |
-|--------|-------|
-| BLEU-4 | 0.0246 |
-| METEOR | 0.1364 |
-| BERTScore-F1 | 0.8584 |
+* Clean images: 60%
+* FGSM adversarial images: 20%
+* MI-FGSM adversarial images: 20%
 
-**Drop % (from Clean):**
-- BLEU-4 ↓ 12.73%
-- BERTScore-F1 ↓ 0.56%
+Total training samples: **25,000**
 
 ---
 
-### Under MI-FGSM Attack
+## Clean Performance
 
-| Metric | Score |
-|--------|-------|
-| BLEU-4 | 0.0203 |
-| METEOR | 0.1016 |
-| BERTScore-F1 | 0.8513 |
-
-**Drop % (from Clean):**
-- BLEU-4 ↓ 28.06%
-- BERTScore-F1 ↓ 1.38%
-
----
-
-# Key Observations
-
-- MI-FGSM causes significantly higher degradation compared to FGSM for both models.
-- The Original model achieves higher Clean BERTScore but suffers larger BLEU degradation under attacks.
-- The LoRA model shows improved robustness in terms of lower BLEU-4 drop percentages.
-- LoRA fine-tuning improves METEOR but slightly lowers Clean BERTScore.
-- Gradient-based attacks substantially affect n-gram based metrics more than semantic similarity (BERTScore).
+| Metric       | Score  |
+| ------------ | ------ |
+| BLEU-1       | 0.2054 |
+| BLEU-2       | 0.0625 |
+| BLEU-3       | 0.0347 |
+| BLEU-4       | 0.0267 |
+| METEOR       | 0.1585 |
+| BERTScore-F1 | 0.8648 |
 
 ---
 
-# Preliminary Conclusion
+## Performance Under FGSM Attack
 
-LoRA fine-tuning improves relative robustness against transfer-based adversarial attacks in terms of BLEU degradation, though semantic similarity (BERTScore) remains relatively stable across both models.
+| Metric       | Score  |
+| ------------ | ------ |
+| BLEU-4       | 0.0239 |
+| METEOR       | 0.1356 |
+| BERTScore-F1 | 0.8574 |
 
-Further large-scale evaluations and additional attack strategies are planned.
+---
+
+## Performance Under MI-FGSM Attack
+
+| Metric       | Score  |
+| ------------ | ------ |
+| BLEU-4       | 0.0194 |
+| METEOR       | 0.0971 |
+| BERTScore-F1 | 0.8500 |
+
+---
+
+# Observations
+
+* The baseline model shows significant degradation in caption quality under adversarial perturbations.
+* Adversarial fine-tuning improves robustness against both FGSM and MI-FGSM attacks.
+* Although some reduction in semantic similarity (BERTScore) is observed after fine-tuning, the model exhibits improved stability under adversarial conditions.
+* The mixed training distribution enables the model to maintain reasonable caption quality while increasing resistance to perturbations.
+
+---
