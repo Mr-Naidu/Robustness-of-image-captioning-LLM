@@ -1,68 +1,57 @@
 # Experimental Logs
 
-This document summarizes experiments conducted to evaluate the robustness of the **GIT-Large image captioning model** against adversarial transfer attacks.
-The defense method explored is **LoRA-based adversarial fine-tuning** using a mixture of clean and adversarially perturbed images.
+This document summarizes all experiments conducted to evaluate the robustness of the **GIT-Large image captioning model** against adversarial attacks and fine-tuning defenses.
 
-Dataset: Flickr8k
-Evaluation set size: 1000 images
+- **Model:** microsoft/git-large
+- **Training dataset:** Flickr8k
+- **Evaluation dataset:** MS-COCO subset (1,000 images)
+- **Metrics:** BLEU1-4, METEOR, BERTScore F1
 
 ---
 
-# 1. Baseline Model (Pretrained GIT-Large)
+# 1. Baseline Model (Pretrained GIT-Large — No Fine-Tuning)
 
 ### Model
-
-* Architecture: microsoft/git-large
-* Training: No additional fine-tuning
-* Dataset: Flickr8k
+- Architecture: `microsoft/git-large`
+- Training: No additional fine-tuning
+- Parameters: ~347M (all frozen)
 
 ### Attack Configuration
-
-* FGSM attack (ε = 8/255)
-* MI-FGSM attack (ε = 8/255, α = 2/255, 10 iterations)
+- FGSM: ε = 8/255, white-box on GIT
+- MI-FGSM: ε = 8/255, α = 2/255, 10 iterations, white-box on GIT
 
 ---
 
 ## Clean Performance
 
-| Metric       | Score  |
-| ------------ | ------ |
-| BLEU-1       | 0.1234 |
-| BLEU-2       | 0.0721 |
-| BLEU-3       | 0.0484 |
-| BLEU-4       | 0.0359 |
-| METEOR       | 0.1511 |
-| BERTScore-F1 | 0.8988 |
+| Metric | Score |
+|---|---|
+| BLEU-1 | 0.1234 |
+| BLEU-2 | 0.0721 |
+| BLEU-3 | 0.0484 |
+| BLEU-4 | 0.0359 |
+| METEOR | 0.1511 |
+| BERTScore F1 | 0.8988 |
 
 ---
 
-## Performance Under FGSM Attack
+## Performance Under FGSM Attack (White-Box)
 
-| Metric       | Score  |
-| ------------ | ------ |
-| BLEU-4       | 0.0282 |
-| METEOR       | 0.1266 |
-| BERTScore-F1 | 0.8937 |
-
-**Performance Degradation**
-
-* BLEU-4 decrease: 21.45%
-* BERTScore-F1 decrease: 0.57%
+| Metric | Score | Drop |
+|---|---|---|
+| BLEU-4 | 0.0282 | 21.45% |
+| METEOR | 0.1266 | 16.22% |
+| BERTScore F1 | 0.8937 | 0.57% |
 
 ---
 
-## Performance Under MI-FGSM Attack
+## Performance Under MI-FGSM Attack (White-Box)
 
-| Metric       | Score  |
-| ------------ | ------ |
-| BLEU-4       | 0.0189 |
-| METEOR       | 0.0845 |
-| BERTScore-F1 | 0.8842 |
-
-**Performance Degradation**
-
-* BLEU-4 decrease: 47.32%
-* BERTScore-F1 decrease: 1.62%
+| Metric | Score | Drop |
+|---|---|---|
+| BLEU-4 | 0.0189 | 47.32% |
+| METEOR | 0.0845 | 44.06% |
+| BERTScore F1 | 0.8842 | 1.62% |
 
 ---
 
@@ -70,67 +59,261 @@ Evaluation set size: 1000 images
 
 ### Training Configuration
 
-| Parameter              | Value               |
-| ---------------------- | ------------------- |
-| Base Model             | microsoft/git-large |
-| Fine-tuning Method     | LoRA                |
-| LoRA Rank              | 4                   |
-| LoRA Alpha             | 8                   |
-| Learning Rate          | 2e-5                |
-| Batch Size             | 4                   |
-| Epochs                 | 5                   |
-| Maximum Caption Length | 50                  |
+| Parameter | Value |
+|---|---|
+| Base Model | microsoft/git-large |
+| Fine-tuning Method | LoRA (Low-Rank Adaptation) |
+| LoRA Rank | 8 |
+| LoRA Alpha | 16 |
+| Target Modules | q_proj, v_proj |
+| LoRA Dropout | 0.05 |
+| Trainable Parameters | ~1.8M (0.5% of total) |
+| Learning Rate | 5e-5 |
+| Batch Size | 8 |
+| Epochs | 5 |
+| Warmup Steps | 100 |
+| Weight Decay | 0.01 |
+| Max Caption Length | 50 |
+| Mixed Precision | fp16 |
+| Early Stopping Patience | 3 |
+| Training Platform | Google Colab T4 GPU |
 
 ### Training Data Composition
 
-The training dataset contains a mixture of clean and adversarially perturbed images.
-
-* Clean images: 60%
-* FGSM adversarial images: 20%
-* MI-FGSM adversarial images: 20%
-
-Total training samples: **25,000**
+| Split | Proportion | Description |
+|---|---|---|
+| Clean | 60% | Original Flickr8k images |
+| FGSM | 20% | ε = 0.01, single-step white-box |
+| MI-FGSM | 20% | ε = 0.01, α = 0.005, 5 iters |
+| **Total samples** | | **~25,000** |
 
 ---
 
 ## Clean Performance
 
-| Metric       | Score  |
-| ------------ | ------ |
-| BLEU-1       | 0.2054 |
-| BLEU-2       | 0.0625 |
-| BLEU-3       | 0.0347 |
-| BLEU-4       | 0.0267 |
-| METEOR       | 0.1585 |
-| BERTScore-F1 | 0.8648 |
+| Metric | Score |
+|---|---|
+| BLEU-1 | 0.2054 |
+| BLEU-2 | 0.0625 |
+| BLEU-3 | 0.0347 |
+| BLEU-4 | 0.0267 |
+| METEOR | 0.1585 |
+| BERTScore F1 | 0.8648 |
 
 ---
 
-## Performance Under FGSM Attack
+## Performance Under FGSM Attack (White-Box)
 
-| Metric       | Score  |
-| ------------ | ------ |
-| BLEU-4       | 0.0239 |
-| METEOR       | 0.1356 |
-| BERTScore-F1 | 0.8574 |
-
----
-
-## Performance Under MI-FGSM Attack
-
-| Metric       | Score  |
-| ------------ | ------ |
-| BLEU-4       | 0.0194 |
-| METEOR       | 0.0971 |
-| BERTScore-F1 | 0.8500 |
+| Metric | Score | Drop |
+|---|---|---|
+| BLEU-4 | 0.0239 | 10.33% |
+| METEOR | 0.1356 | 14.40% |
+| BERTScore F1 | 0.8574 | 0.85% |
 
 ---
 
-# Observations
+## Performance Under MI-FGSM Attack (White-Box)
 
-* The baseline model shows significant degradation in caption quality under adversarial perturbations.
-* Adversarial fine-tuning improves robustness against both FGSM and MI-FGSM attacks.
-* Although some reduction in semantic similarity (BERTScore) is observed after fine-tuning, the model exhibits improved stability under adversarial conditions.
-* The mixed training distribution enables the model to maintain reasonable caption quality while increasing resistance to perturbations.
+| Metric | Score | Drop |
+|---|---|---|
+| BLEU-4 | 0.0194 | 27.10% |
+| METEOR | 0.0971 | 38.72% |
+| BERTScore F1 | 0.8500 | 1.71% |
 
 ---
+
+# 3. Full Adversarially Fine-Tuned Model
+
+### Training Configuration
+
+| Parameter | Value |
+|---|---|
+| Base Model | microsoft/git-large |
+| Fine-tuning Method | Full fine-tuning (all parameters) |
+| Trainable Parameters | ~347M (100%) |
+| Learning Rate | 5e-5 (cosine schedule) |
+| LR Scheduler | Cosine |
+| Batch Size | 8 |
+| Epochs | 5 |
+| Warmup Steps | 100 |
+| Weight Decay | 0.01 |
+| Max Caption Length | 50 |
+| Mixed Precision | fp16 |
+| Gradient Checkpointing | Enabled |
+| Early Stopping Patience | 3 |
+| Save Only Model | True (skips optimizer.pt, saves ~700MB) |
+| Training Platform | Google Colab T4 GPU |
+
+### Training Data Composition
+
+Same as LoRA: 60% clean / 20% FGSM / 20% MI-FGSM on Flickr8k.
+
+---
+
+## Clean Performance
+
+| Metric | Score |
+|---|---|
+| BLEU-1 | 0.1130 |
+| BLEU-2 | 0.0300 |
+| BLEU-3 | 0.0195 |
+| BLEU-4 | 0.0161 |
+| METEOR | 0.0839 |
+| BERTScore F1 | 0.8509 |
+
+---
+
+## Performance Under FGSM Attack (White-Box)
+
+| Metric | Score | Drop |
+|---|---|---|
+| BLEU-4 | 0.0158 | 1.86% |
+| METEOR | 0.0823 | 1.91% |
+| BERTScore F1 | 0.8496 | 0.15% |
+
+---
+
+## Performance Under MI-FGSM Attack (White-Box)
+
+| Metric | Score | Drop |
+|---|---|---|
+| BLEU-4 | 0.0143 | 11.18% |
+| METEOR | 0.0724 | 13.71% |
+| BERTScore F1 | 0.8480 | 0.34% |
+
+---
+
+# 4. Combined Evaluation — Base vs LoRA vs Full Fine-Tuned
+
+This section presents the full three-way comparison including white-box attacks, ResNet50 transfer attacks, and clean performance.
+
+**Evaluation dataset:** MS-COCO subset (1,000 images)
+
+---
+
+## 4.1 Clean Performance Comparison
+
+| Model | BLEU-1 | BLEU-2 | BLEU-3 | BLEU-4 | METEOR | BERTScore |
+|---|---|---|---|---|---|---|
+| Base GIT-Large | 0.1232 | 0.0725 | 0.0488 | 0.0363 | 0.1499 | 0.8985 |
+| LoRA Fine-Tuned | 0.1816 | 0.0486 | 0.0284 | 0.0224 | 0.1433 | 0.8588 |
+| Full Fine-Tuned | 0.1130 | 0.0300 | 0.0195 | 0.0161 | 0.0839 | 0.8509 |
+
+---
+
+## 4.2 White-Box Attack Results
+
+### BLEU-4
+
+| Model | Clean | FGSM | FGSM Drop | MI-FGSM | MI-FGSM Drop |
+|---|---|---|---|---|---|
+| Base GIT-Large | 0.0363 | 0.0342 | 5.8% | 0.0258 | 28.9% |
+| LoRA Fine-Tuned | 0.0224 | 0.0220 | 1.8% | 0.0196 | 12.5% |
+| Full Fine-Tuned | 0.0161 | 0.0158 | 1.9% | 0.0143 | 11.2% |
+
+### BERTScore F1
+
+| Model | Clean | FGSM | FGSM Drop | MI-FGSM | MI-FGSM Drop |
+|---|---|---|---|---|---|
+| Base GIT-Large | 0.8985 | 0.8985 | 0.00% | 0.8925 | 0.67% |
+| LoRA Fine-Tuned | 0.8588 | 0.8565 | 0.27% | 0.8528 | 0.70% |
+| Full Fine-Tuned | 0.8509 | 0.8496 | 0.15% | 0.8480 | 0.34% |
+
+---
+
+## 4.3 ResNet50 Transfer Attack Results — ε = 8/255
+
+### Comparing GIT-Large output vs its own clean captions (self-reference)
+
+| Attack | BLEU | METEOR | BERTScore | BLEU Drop | METEOR Drop | BERTScore Drop |
+|---|---|---|---|---|---|---|
+| Clean | 0.9126 | 0.9908 | 1.0000 | 0.0000 | 0.0000 | 0.0000 |
+| FGSM | 0.2042 | 0.4016 | 0.9305 | 0.7084 | 0.5892 | 0.0695 |
+| MI-FGSM | 0.2325 | 0.4398 | 0.9348 | 0.6801 | 0.5509 | 0.0652 |
+| DI-FGSM | 0.2334 | 0.4265 | 0.9344 | 0.6792 | 0.5643 | 0.0656 |
+| TI-MI-FGSM | 0.2493 | 0.4477 | 0.9382 | 0.6633 | 0.5431 | 0.0618 |
+
+### Comparing GIT-Large output vs ground truth
+
+| Attack | BLEU | METEOR | BERTScore | BLEU Drop | METEOR Drop | BERTScore Drop |
+|---|---|---|---|---|---|---|
+| Clean | 0.1120 | 0.2747 | 0.8950 | 0.0000 | 0.0000 | 0.0000 |
+| FGSM | 0.1075 | 0.2772 | 0.8939 | 0.0045 | −0.0025 | 0.0010 |
+| MI-FGSM | 0.1087 | 0.2741 | 0.8932 | 0.0033 | 0.0007 | 0.0017 |
+| DI-FGSM | 0.1080 | 0.2648 | 0.8929 | 0.0040 | 0.0100 | 0.0020 |
+| TI-MI-FGSM | 0.1046 | 0.2693 | 0.8937 | 0.0074 | 0.0054 | 0.0013 |
+
+> **Observation:** Ground truth drops are near-zero (< 1%) despite large self-reference drops. This is because the model changes minor phrasing under attack, which hurts BLEU when compared to its own exact clean caption, but not when compared to human ground truth.
+
+---
+
+## 4.4 ResNet50 Transfer Attack Results — ε = 16/255
+
+### Comparing GIT-Large output vs its own clean captions (self-reference)
+
+| Attack | BLEU | METEOR | BERTScore | BLEU Drop | METEOR Drop | BERTScore Drop |
+|---|---|---|---|---|---|---|
+| Clean | 0.9126 | 0.9908 | 1.0000 | 0.0000 | 0.0000 | 0.0000 |
+| FGSM | 0.1392 | 0.3103 | 0.9188 | 0.7734 | 0.6805 | 0.0812 |
+| MI-FGSM | 0.1488 | 0.3236 | 0.9200 | 0.7637 | 0.6672 | 0.0800 |
+| DI-FGSM | 0.1252 | 0.2900 | 0.9157 | 0.7874 | 0.7008 | 0.0843 |
+| TI-MI-FGSM | 0.1573 | 0.3369 | 0.9242 | 0.7552 | 0.6539 | 0.0758 |
+
+### Comparing GIT-Large output vs ground truth
+
+| Attack | BLEU | METEOR | BERTScore | BLEU Drop | METEOR Drop | BERTScore Drop |
+|---|---|---|---|---|---|---|
+| Clean | 0.1120 | 0.2747 | 0.8950 | 0.0000 | 0.0000 | 0.0000 |
+| FGSM | 0.0987 | 0.2478 | 0.8893 | 0.0134 | 0.0270 | 0.0056 |
+| MI-FGSM | 0.1039 | 0.2573 | 0.8903 | 0.0082 | 0.0174 | 0.0047 |
+| DI-FGSM | 0.1024 | 0.2539 | 0.8876 | 0.0097 | 0.0208 | 0.0073 |
+| TI-MI-FGSM | 0.0948 | 0.2483 | 0.8898 | 0.0173 | 0.0264 | 0.0051 |
+
+---
+
+## 4.5 Transfer Attack Robustness — All 3 Models (BLEU-4)
+
+| Model | Clean | FGSM Transfer | MI-FGSM Transfer | FGSM Drop | MI-FGSM Drop |
+|---|---|---|---|---|---|
+| Base GIT-Large | 0.0363 | 0.0354 | 0.0353 | 2.5% | 2.8% |
+| LoRA Fine-Tuned | 0.0224 | 0.0224 | 0.0221 | 0.0% | 1.3% |
+| Full Fine-Tuned | 0.0161 | 0.0163 | 0.0165 | −1.2% | −2.5% |
+
+---
+
+## 4.6 Robustness-Quality Trade-off Summary
+
+| Model | Clean BLEU-4 | Clean BERTScore | MI-FGSM BLEU-4 Drop | Transfer Immunity | Params Updated |
+|---|---|---|---|---|---|
+| Base GIT-Large | 0.0363 | 0.8985 | 28.9% | ✅ Yes | None |
+| LoRA Fine-Tuned | 0.0224 | 0.8588 | 12.5% | ✅ Yes | ~1.8M (0.5%) |
+| Full Fine-Tuned | 0.0161 | 0.8509 | 11.2% | ✅ Yes | ~347M (100%) |
+
+---
+
+# 5. Observations & Conclusions
+
+### 5.1 Transfer Attack Immunity
+All three GIT-Large variants show near-complete immunity to ResNet50 transfer attacks at ε = 8/255 and substantial resistance at ε = 16/255 when measured against ground truth. This is due to the fundamental architectural difference between CNN (ResNet50) and Vision Transformer (GIT-Large) — adversarial perturbations crafted to exploit convolutional filter responses do not generalise to patch-based attention mechanisms.
+
+### 5.2 White-Box Vulnerability
+Both fine-tuned models significantly outperform the base model under white-box attacks. Base MI-FGSM BLEU-4 drop is 28.9%, versus 12.5% (LoRA) and 11.2% (Full FT) — representing a ~57-61% improvement in robustness.
+
+### 5.3 LoRA is the Recommended Defense
+LoRA and Full FT achieve nearly identical robustness, but LoRA retains substantially more clean-image performance. Full fine-tuning reduces clean BLEU-4 by 55.6% vs base; LoRA reduces it by only 38.3%. For practical deployment where both robustness and caption quality matter, LoRA adversarial fine-tuning is the superior choice.
+
+### 5.4 Self-Reference vs Ground Truth Evaluation
+The large self-reference drops under transfer attacks (~67-78% BLEU drop) should not be interpreted as severe caption degradation — they reflect minor phrasing variations between the model's clean and attacked outputs. Ground truth evaluation shows the actual impact is much smaller (< 2% BLEU drop at ε = 8/255).
+
+---
+
+# 6. Hardware & Software
+
+| Component | Training | Evaluation |
+|---|---|---|
+| GPU | NVIDIA Tesla T4 (16GB) | NVIDIA RTX 3050 Laptop (6GB) |
+| Platform | Google Colab | Local Windows 11 |
+| Python | 3.10 | 3.10 |
+| PyTorch | 2.x + CUDA 11.x | 2.6.0 + CUDA 12.4 |
+| Transformers | HuggingFace | HuggingFace |
+| PEFT | Used for LoRA | Used for LoRA |
