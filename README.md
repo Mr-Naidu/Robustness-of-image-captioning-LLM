@@ -1,113 +1,198 @@
-# Robustness of Image Captioning LLMs Against Adversarial Attacks
+# Adversarial Robustness of Vision-Language Models under Transfer Attacks
 
-> **Active Research** — Evaluating adversarial robustness of GIT-Large image captioning under white-box and transfer attacks, with LoRA and full adversarial fine-tuning as defense strategies.
+> Research project evaluating the robustness of transformer-based image captioning models under white-box and cross-architecture transfer attacks, with comparison of Base, LoRA fine-tuned, and Full fine-tuned GIT-Large models.
 
 ---
 
-## Research Objective
+## Overview
 
-- Evaluate the robustness of **GIT-Large** under white-box (FGSM, MI-FGSM) and black-box transfer attacks (ResNet50 surrogate)
-- Compare two adversarial fine-tuning defense strategies: **LoRA** and **Full Fine-Tuning**
-- Measure caption degradation using BLEU1-4, METEOR, and BERTScore F1
-- Analyze CNN-to-Transformer adversarial transferability
+Vision-Language Models (VLMs) achieve strong performance on image captioning tasks, but their robustness under adversarial perturbations remains an important research challenge. Small perturbations added to input images can influence model predictions and reduce reliability in real-world applications.
+
+This project investigates how adversarial perturbations generated on a surrogate CNN model transfer to a transformer-based captioning model and evaluates whether parameter-efficient fine-tuning methods improve robustness without requiring full model retraining.
+
+The study includes:
+
+- white-box attacks directly on the captioning model
+- transfer attacks generated on a ResNet50 surrogate model
+- robustness comparison across Base, LoRA fine-tuned, and Full fine-tuned models
+- evaluation using BLEU, METEOR, and BERTScore
+- analysis of CNN-to-Transformer adversarial transferability
+
+---
+
+## Research Objectives
+
+- Evaluate robustness of GIT-Large image captioning model under adversarial perturbations
+- Compare white-box attacks and cross-architecture transfer attacks
+- Study robustness improvements from LoRA fine-tuning vs full fine-tuning
+- Analyze how adversarial perturbations influence caption semantics
+- understand CNN-to-Transformer adversarial transfer behaviour
 
 ---
 
 ## Models Evaluated
 
 | Model | Description |
-|---|---|
-| **Base GIT-Large** | `microsoft/git-large` — no fine-tuning |
-| **LoRA Fine-Tuned** | GIT-Large with LoRA adversarial fine-tuning (r=8, α=16) |
-| **Full Fine-Tuned** | GIT-Large with full adversarial fine-tuning (all 347M params) |
+|------|-------------|
+| Base GIT-Large | microsoft/git-large without additional fine-tuning |
+| LoRA Fine-Tuned | GIT-Large with parameter-efficient LoRA fine-tuning |
+| Full Fine-Tuned | GIT-Large with full model fine-tuning |
+| ResNet50 | surrogate CNN used to generate transfer attacks |
 
-All fine-tuning uses a **60% clean / 20% FGSM / 20% MI-FGSM** training mixture on **Flickr8k**.  
-Evaluation is performed on a **1,000-image MS-COCO subset**.
+All fine-tuning uses a mixed training dataset:
+
+- 60% clean images
+- 20% FGSM attacked images
+- 20% MI-FGSM attacked images
+
+Training dataset:
+Flickr8k
+
+Evaluation dataset:
+MS-COCO subset (1000 images)
 
 ---
 
-## Key Results
+## Attack Setting
 
-### Clean Performance
+Two adversarial evaluation settings are used.
 
-| Model | BLEU-4 | METEOR | BERTScore |
-|---|---|---|---|
-| Base GIT-Large | 0.0363 | 0.1499 | 0.8985 |
-| LoRA Fine-Tuned | 0.0224 | 0.1433 | 0.8588 |
-| Full Fine-Tuned | 0.0161 | 0.0839 | 0.8509 |
+### White-box attacks
+Adversarial perturbations are generated directly on the GIT-Large model using gradient-based methods.
 
-### White-Box Attack Robustness (BLEU-4 Drop)
-
-| Model | FGSM Drop | MI-FGSM Drop |
-|---|---|---|
-| Base GIT-Large | 5.8% | 28.9% |
-| LoRA Fine-Tuned | 1.8% | 12.5% |
-| Full Fine-Tuned | 1.9% | 11.2% |
-
-### Transfer Attack (ResNet50 → GIT) — Near-Zero Degradation
-
-All three GIT-Large variants show **near-complete immunity** to ResNet50 transfer attacks.  
-This is due to the architectural gap between CNNs and vision transformers (patch-based attention).
-
-| Model | FGSM Transfer Drop | MI-FGSM Transfer Drop |
-|---|---|---|
-| Base GIT-Large | 2.5% | 2.8% |
-| LoRA Fine-Tuned | 0.0% | 1.3% |
-| Full Fine-Tuned | −1.2% | −2.5% |
-
-### Key Finding
-
-> **LoRA adversarial fine-tuning achieves the best robustness-quality trade-off.**  
-> It reduces MI-FGSM degradation by ~57% vs base, while retaining 40% more clean BLEU-4 than full fine-tuning.
+### Transfer attacks
+Adversarial perturbations are generated on ResNet50 and transferred to GIT-Large.  
+This simulates realistic black-box scenarios where the attacker does not have access to target model parameters.
 
 ---
 
 ## Attacks Implemented
 
-### White-Box Attacks (on GIT directly)
-| Attack | Type | ε | Notes |
-|---|---|---|---|
-| FGSM | Single-step | 0.01 | Gradient sign, clamp [-1,1] |
-| MI-FGSM | Iterative + momentum | 0.01 | α=0.005, 5 iters |
+### White-box attacks (on GIT-Large)
 
-### Transfer Attacks (crafted on ResNet50, applied to GIT)
-| Attack | ε | Notes |
-|---|---|---|
-| FGSM | 8/255, 16/255 | Single-step on ResNet50 |
-| MI-FGSM | 8/255, 16/255 | Iterative, α=0.005, 5 iters |
-| DI-FGSM | 8/255, 16/255 | Diverse inputs for better transfer |
-| TI-MI-FGSM | 8/255, 16/255 | Translation-invariant MI-FGSM |
+| Attack | Description |
+|-------|-------------|
+| FGSM | Fast Gradient Sign Method |
+| MI-FGSM | Momentum Iterative FGSM |
+
+epsilon:
+0.01
+
+---
+
+### Transfer attacks (ResNet50 → GIT-Large)
+
+| Attack | Description |
+|-------|-------------|
+| FGSM | single-step gradient sign attack |
+| MI-FGSM | momentum iterative attack |
+| DI-FGSM | diverse input iterative attack |
+| TI-MI-FGSM | translation invariant momentum iterative attack |
+
+epsilon values:
+8/255 and 16/255
 
 ---
 
 ## Fine-Tuning Configuration
 
-| Parameter | LoRA | Full Fine-Tuning |
-|---|---|---|
-| Base Model | microsoft/git-large | microsoft/git-large |
-| Trainable Params | ~1.8M (0.5%) | ~347M (100%) |
-| LoRA Rank | 8 | N/A |
-| LoRA Alpha | 16 | N/A |
-| Target Modules | q_proj, v_proj | All |
-| Learning Rate | 5e-5 | 5e-5 (cosine) |
-| Batch Size | 8 | 8 |
-| Epochs | 5 | 5 |
-| Mixed Precision | fp16 | fp16 |
-| Early Stopping | patience=3 | patience=3 |
-| Training Platform | Google Colab T4 | Google Colab T4 |
+### LoRA Fine-Tuning
+
+| Parameter | Value |
+|----------|-------|
+| base model | microsoft/git-large |
+| trainable parameters | ~1.8M |
+| LoRA rank | 8 |
+| LoRA alpha | 16 |
+| target layers | q_proj, v_proj |
+| learning rate | 5e-5 |
+| batch size | 8 |
+| epochs | 5 |
+| mixed precision | fp16 |
 
 ---
 
-## Datasets
+### Full Fine-Tuning
 
-| Dataset | Usage |
-|---|---|
-| **Flickr8k** | Adversarial fine-tuning training (8,092 images, 5 captions each) |
-| **MS-COCO subset** (1,000 images) | Evaluation — unseen during training |
+| Parameter | Value |
+|----------|-------|
+| base model | microsoft/git-large |
+| trainable parameters | ~347M |
+| learning rate | 5e-5 |
+| batch size | 8 |
+| epochs | 5 |
+| mixed precision | fp16 |
+
+---
+
+## Evaluation Metrics
+
+Caption outputs are compared against ground truth captions using:
+
+BLEU
+- measures n-gram overlap between generated caption and reference caption
+
+METEOR
+- measures semantic similarity using stemming and synonym matching
+
+BERTScore
+- measures contextual similarity using pretrained language embeddings
+
+---
+
+## Key Results
+
+### Clean performance
+
+| Model | BLEU-4 | METEOR | BERTScore |
+|------|-------|--------|-----------|
+| Base | 0.0363 | 0.1499 | 0.8985 |
+| LoRA | 0.0224 | 0.1433 | 0.8588 |
+| Full FT | 0.0161 | 0.0839 | 0.8509 |
+
+---
+
+### White-box robustness (BLEU-4 drop)
+
+| Model | FGSM drop | MI-FGSM drop |
+|------|-----------|--------------|
+| Base | 5.8% | 28.9% |
+| LoRA | 1.8% | 12.5% |
+| Full FT | 1.9% | 11.2% |
+
+Observation:
+
+LoRA and Full Fine-Tuning significantly reduce degradation under iterative attacks.
+
+---
+
+### Transfer attack robustness (ResNet50 → GIT)
+
+| Model | FGSM drop | MI-FGSM drop |
+|------|-----------|--------------|
+| Base | 2.5% | 2.8% |
+| LoRA | 0.0% | 1.3% |
+| Full FT | -1.2% | -2.5% |
+
+Observation:
+
+Transfer attacks generated on ResNet50 produce minimal semantic degradation when evaluated on GIT-Large.
+
+This suggests reduced transferability between CNN and transformer architectures.
+
+---
+
+## Key Findings
+
+- transformer-based captioning models show resilience to CNN-generated adversarial perturbations
+- LoRA improves robustness while requiring significantly fewer trainable parameters
+- full fine-tuning provides strongest robustness but at higher computational cost
+- cross-architecture transfer attacks show weaker impact compared to white-box attacks
 
 ---
 
 ## Repository Structure
+
 
 ```
 ├── experimental_logs          ← Full experiment logs with all tables
@@ -127,7 +212,6 @@ This is due to the architectural gap between CNNs and vision transformers (patch
 ## Planned / Future Work
 
 - [ ] Diffusion-based adversarial purification as a pre-processing defense
-- [ ] Stronger attack training mixtures (PGD, C&W, AutoAttack)
 - [ ] Adaptive adversarial evaluation against defended models
 - [ ] Comparison of other PEFT methods (prefix tuning, adapters, DoRA)
 - [ ] Full MS-COCO validation set evaluation (5,000 images)
@@ -144,6 +228,7 @@ This is due to the architectural gap between CNNs and vision transformers (patch
 | Full adversarial fine-tuning | ✅ Complete |
 | Combined 3-model evaluation | ✅ Complete |
 | DI-FGSM / TI-MI-FGSM transfer attacks | ✅ Complete |
+|Stronger attack training mixtures | ✅ Complete|
 | Diffusion purification defense | 🔲 Planned |
 
 ---
